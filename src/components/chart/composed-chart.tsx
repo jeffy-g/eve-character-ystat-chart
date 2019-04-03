@@ -122,7 +122,8 @@ function createChartComponentsBy(
                 const sid = category === "isk" ? void 0 : "dummy";
                 component = (
                     <Bar key={keyPath}
-                        dataKey={keyPath} barSize={80} stackId={sid} fill={color}
+                        dataKey={keyPath} barSize={80} fill={color}
+                        stackId={sid}
                     // legendType="square" // default: rect
                     />
                 );

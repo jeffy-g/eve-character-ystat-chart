@@ -89,6 +89,7 @@ type EVEJWTData = {
 const DEBUG = 0;
 
 const eve_auth_base = "https://login.eveonline.com/v2/oauth/authorize/";
+// TODO: where do you want to fix redirect_uri?
 const redirect_uri = "https://r5xwjo0x7m.codesandbox.io/callback/dummy.html";
 const client_id = "2bb259b381244ca89501b72a8faa827a";
 const scope = "esi-characterstats.read.v1";

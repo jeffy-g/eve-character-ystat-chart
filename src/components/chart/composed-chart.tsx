@@ -124,7 +124,7 @@ function createChartComponentsBy(
                     <Bar key={keyPath}
                         dataKey={keyPath} barSize={80} fill={color}
                         stackId={sid}
-                    // legendType="square" // default: rect
+                        // legendType="square" // default: rect
                     />
                 );
                 break;

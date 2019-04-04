@@ -26,6 +26,7 @@
 import * as util from "./util";
 import { TEVECharacterYearlyStat } from "./components/chart/yearly-stat-chart";
 
+
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 //                            constants, types
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -83,35 +84,31 @@ type EVEJWTData = {
     iss: string;
 };
 
+type TEVECharacterYearlyStatInitializer = <T extends TEVECharacterYearlyStat[]>(
+    jsonData: T,
+    characterData: EVECharacterData
+) => void;
+
 //
 // - - - enable debug log? - - -
 //
 const DEBUG = 0;
 
 const eve_auth_base = "https://login.eveonline.com/v2/oauth/authorize/";
+
+const client_id = "2bb259b381244ca89501b72a8faa827a";
 // TODO: where do you want to fix redirect_uri?
 const redirect_uri = "https://r5xwjo0x7m.codesandbox.io/callback/dummy.html";
-const client_id = "2bb259b381244ca89501b72a8faa827a";
 const scope = "esi-characterstats.read.v1";
 
 const debugLog = (tag: string, args?: any) => {
-    DEBUG && console.log(`${tag}, authWindow:`, authWindow, args);
+    console.log(`${tag}, authWindow:`, authWindow, args);
 };
-const ALERT_MSG = "Failed to authorize your character, please try again.";
+
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 //                         module vars, functions.
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-// DEVNOTE: cleanup beforeunload
-window.addEventListener(
-    "beforeunload",
-    e => {
-        DEBUG && console.log(e);
-        authWindow && authWindow.close();
-    },
-    { once: true }
-);
-
 const createAuthUrl = () => {
     return `${eve_auth_base}?response_type=token&redirect_uri=${encodeURIComponent(
         redirect_uri
@@ -119,13 +116,10 @@ const createAuthUrl = () => {
 };
 
 let authWindow: Window | null = null;
-let authCallback: <T extends TEVECharacterYearlyStat[]>(
-    jsonData: T,
-    characterData: EVECharacterData
-) => void;
+let authCallback: TEVECharacterYearlyStatInitializer | null;
 
 /**
- * shared for `Window` and `Electron.BrowserWindow`.
+ *
  */
 const closeHandler = (/* e?: Event */): void => {
     DEBUG && debugLog("closeHandler:: enter");
@@ -134,6 +128,10 @@ const closeHandler = (/* e?: Event */): void => {
         authWindow = null;
     }
 };
+// DEVNOTE: cleanup beforeunload
+window.addEventListener(
+    "beforeunload", closeHandler, { once: true }
+);
 /** for auth process guard. */
 let guardCounter = 0;
 
@@ -149,20 +147,20 @@ function handleCallbackResponse(url: string): boolean {
         return false;
     }
 
-    const error = /\?error=(.+)$/.test(url);
-    const matches = /access_token=([^&]*)/.exec(url);
+    let matches = /access_token=([^&]+)/.exec(url);
     const access_token = (matches && matches[1]) || void 0;
+    matches = /\?error=(.+)$/.exec(url);
+    const error = (matches && matches[1]) || void 0;
 
     if (access_token || error) {
         closeHandler();
     }
 
     if (access_token) {
-        DEBUG &&
-            console.log(
-                "handleCallbackResponse:: got access_token, guardCounter:",
-                guardCounter++
-            );
+        guardCounter++;
+        DEBUG && console.log(
+            "handleCallbackResponse:: got access_token, guardCounter:", guardCounter
+        );
 
         const verifyData = verify(access_token);
         const esi_base = "https://esi.evetech.net/latest/";
@@ -172,20 +170,21 @@ function handleCallbackResponse(url: string): boolean {
         }/stats/?datasource=tranquility&token=${access_token}`;
 
         // DEVNOTE: async process
-        fetch(esi_url)
-            .then(async response => {
-                const ys = <Parameters<typeof authCallback>[0]>await response.json();
-                DEBUG && console.log(ys);
-                authCallback(ys, verifyData);
-                DEBUG && debugLog("fetch.then:: exit");
-            })
-            .catch(reason => {
-                console.warn(reason);
-            });
+        fetch(esi_url).then(async response => {
+            const ys = <Parameters<TEVECharacterYearlyStatInitializer>[0]>await response.json();
+            DEBUG && console.log(ys);
+            authCallback!(ys, verifyData);
+            DEBUG && debugLog("fetch.then:: exit");
+        }).catch(reason => {
+            console.warn(reason);
+        }).finally(() => {
+            authCallback = null;
+            guardCounter = 0;
+        });
 
         return true;
     } else if (error) {
-        alert(ALERT_MSG);
+        alert(`Failed to authorize your character, error=${error}\nplease try again.`);
     }
 
     return false;
@@ -193,12 +192,9 @@ function handleCallbackResponse(url: string): boolean {
 /**
  * SSO v2 `accessToken` contains json data as base64 encoded.
  *
- * @date 2019-01-26
- * @private
  * @param {string} accessToken
  * @returns {SSOVerifyResult} modified or convert from `JWT` data.
  */
-// TODO: 2019-3-14 23:57:33 - EVEJWTData による auth data の簡素化
 function verify(accessToken: string): SSOVerifyResult {
     const data = atob(accessToken.split(".")[1]);
     const jwt: EVEJWTData = JSON.parse(data);
@@ -217,39 +213,38 @@ function verify(accessToken: string): SSOVerifyResult {
 const AuthEventMarshaller = {
     // DEVNOTE: cannot change value "enable" when access with "this" keyword.
     // must access with AuthEventMarshaller
-    enable: false,
+    listening: false,
     // timerId: null,
     _handleMessage: function(e: MessageEvent): any {
-        DEBUG && debugLog("AuthEventMarshaller::_handleMessage enter");
-        const data = e.data as string;
-        if (handleCallbackResponse(data)) {
+        DEBUG && debugLog("AuthEventMarshaller::_handleMessage enter", e);
+        const authCallbackUrl = e.data as string;
+        if (typeof authCallbackUrl === "string" && handleCallbackResponse(authCallbackUrl)) {
             DEBUG && console.log("authorize process running...");
             window.removeEventListener("message", this._handleMessage, false);
-            AuthEventMarshaller.enable = false;
+            AuthEventMarshaller.listening = false;
         }
     },
-    listen: function(): void {
+    listen: function (initializer: TEVECharacterYearlyStatInitializer): void {
         DEBUG && debugLog(`AuthEventMarshaller::listen enter`, this);
-        if (!AuthEventMarshaller.enable) {
+        if (!AuthEventMarshaller.listening) {
             DEBUG && console.log("initializeing message event...");
+            authCallback = initializer;
             window.addEventListener("message", this._handleMessage, false);
-            AuthEventMarshaller.enable = true;
+            AuthEventMarshaller.listening = true;
         }
     }
 };
 /**
  *
  */
-export function launchAuthWindow(callback: typeof authCallback) {
+export function launchAuthWindow(callback: TEVECharacterYearlyStatInitializer) {
     DEBUG && debugLog("launchAuthWindow:: enter");
     if (authWindow !== null && !authWindow.closed) {
         console.warn("auth window already launched");
         return;
     }
 
-    authCallback = callback;
-    AuthEventMarshaller.listen();
-
+    AuthEventMarshaller.listen(callback);
     // clear guard counter
     guardCounter = 0;
     authWindow = util.openWindow(createAuthUrl(), { width: 450, height: 700 });

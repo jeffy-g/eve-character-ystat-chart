@@ -17,9 +17,8 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 */
-
-import React from "react";
-import ReactDOM from "react-dom";
+import * as React from "react";
+import * as ReactDOM from "react-dom";
 
 import sampleStats from "./sample-data";
 import EVECharacterYearlyStatChart, {
@@ -29,9 +28,6 @@ import { launchAuthWindow, EVECharacterData } from "./eve-api";
 
 import "./styles.scss";
 
-const rootElement = document.getElementById("root");
-const openAuth = document.getElementById("openAuth");
-const darkCheck = document.querySelector(".theme-dark");
 
 /**
  *
@@ -43,7 +39,7 @@ const renderComponent = (
     stats: TEVECharacterYearlyStat[],
     characterData?: EVECharacterData
 ) => {
-    const root = rootElement!;
+    const root = document.getElementById("root")!;
     if (root === null) {
         throw Error("cannot render react components!");
     }
@@ -52,22 +48,28 @@ const renderComponent = (
     }
     ReactDOM.render(
         <EVECharacterYearlyStatChart stats={stats} characterData={characterData} />,
-        rootElement
+        root
     );
 };
 
-// const recieveMessage = (/** @type {MessageEvent} */ e) => {
-//     console.log(e.data);
-//     window.removeEventListener("message", recieveMessage, false);
-// };
-// window.addEventListener("message", recieveMessage, false);
+(() => {
+    const init = () => {
+        const openAuth = document.getElementById("openAuth");
+        const darkCheck = document.querySelector(".theme-dark");
+        openAuth!.addEventListener("click", () => {
+            launchAuthWindow(renderComponent);
+        });
+        darkCheck!.addEventListener("change", function (this: HTMLInputElement) {
+            const method = this.checked ? "add" : "remove";
+            document.body.classList[method]("dark");
+        });
+        renderComponent(sampleStats);
+        return 0!;
+    }
+    console.log(document.readyState);
+    document.readyState === "complete" && init() || window.addEventListener(
+        "load", init, { once: true }
+    );
+})();
 
-openAuth!.addEventListener("click", () => {
-    launchAuthWindow(renderComponent);
-});
-darkCheck!.addEventListener("change", function(this: HTMLInputElement) {
-    const method = this.checked ? "add" : "remove";
-    document.body.classList[method]("dark");
-});
 
-renderComponent(sampleStats);

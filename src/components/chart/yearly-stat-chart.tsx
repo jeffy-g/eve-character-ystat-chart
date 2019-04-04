@@ -114,21 +114,19 @@ const collectActualCategories = (stats: TEVECharacterYearlyStat[]) => {
     return propertyNames;
 };
 
-const imageStyle = { verticalAlign: "middle" };
 const EVECharacterImage = React.memo(
-    (
-        {
+    (props: EVECharacterData = {} as EVECharacterData) => {
+        const {
             characterId = "0",
             characterName = "anonymouse"
-        }: EVECharacterData = {} as EVECharacterData
-    ) => {
+        } = props;
         DEBUG && console.log("EVECharacterImage:: enter, characterId:", characterId);
         return (
             <img
                 alt=""
                 title={characterName}
                 width="24"
-                style={imageStyle}
+                style={{ verticalAlign: "middle" }}
                 src={`${EVE_IMAGE_SERVER_URL}/character/${characterId}_32.jpg`}
             />
         );
@@ -168,7 +166,6 @@ export default function EVECharacterYearlyStatChart({
             DEBUG && console.log("EVECharacterYearlyStatChart:: in React.useMemo");
             stats.sort((a, b) => {
                 return (a.year as number) - (b.year as number);
-                // return a.year < b.year ? -1 : a.year > b.year ? 1 : 0;
             });
             // use cache.
             const categories = collectActualCategories(stats);
@@ -178,13 +175,13 @@ export default function EVECharacterYearlyStatChart({
     );
 
     const [category, updateCategory] = React.useState("character");
-    const [ctype, updateType] = React.useState("line" as TChartComponentType);
+    const [ctype, updateType] = React.useState("bar" as TChartComponentType);
 
     const categoryRef = React.useRef<HTMLSelectElement | null>(null);
     // DEVNOTE: only focus at first render.
     React.useEffect(() => {
         if (categoryRef.current) {
-            categoryRef.current.focus();
+            // categoryRef.current.focus();
         }
         return () => {
             categoryRef.current = null;
@@ -202,13 +199,11 @@ export default function EVECharacterYearlyStatChart({
                     updateCategory(e.currentTarget.value);
                 }}
             >
-                {categories.map(ctgry => {
-                    return (
-                        <option key={ctgry} value={ctgry}>
-                            {ctgry}
-                        </option>
-                    );
-                })}
+                {categories.map(category => (
+                    <option key={category} value={category}>
+                        {category}
+                    </option>
+                ))}
             </select>
         );
     }, []);
@@ -223,13 +218,11 @@ export default function EVECharacterYearlyStatChart({
                     updateType(e.currentTarget.value as TChartComponentType);
                 }}
             >
-                {["line", "bar", "area"].map(type => {
-                    return (
-                        <option key={type} value={type}>
-                            {type}
-                        </option>
-                    );
-                })}
+                {["line", "bar", "area"].map(type => (
+                    <option key={type} value={type}>
+                        {type}
+                    </option>
+                ))}
             </select>
         );
     }, []);
@@ -247,9 +240,7 @@ export default function EVECharacterYearlyStatChart({
                 <EVECharacterImage {...characterData} />
             </div>
             <LineBarAreaComposedChart
-                stats={cacheStats}
-                category={category}
-                type={ctype}
+                stats={cacheStats} category={category} type={ctype}
             />
         </>
     );

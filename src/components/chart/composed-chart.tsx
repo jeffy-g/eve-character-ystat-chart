@@ -25,7 +25,7 @@ import * as React from "react";
 import {
     ResponsiveContainer,
     ComposedChart,
-    Line,
+    Line, //LineProps,
     Area,
     Bar,
     XAxis,
@@ -42,6 +42,11 @@ import { scaleSqrt } from "d3-scale";
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 //                            constants, types
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+//
+// - - - enable debug log? - - -
+//
+const DEBUG = 0;
+
 export type EVEYearlyStat = {
     [category: string]: StringMap<number> | number;
 };
@@ -58,11 +63,11 @@ const unity = (): number => {
     return ~~(Math.random() * 255);
 };
 function randomCSSRgba(alpha: number): string {
-    if (alpha < 0) {
-        alpha = 0;
-    } else if (alpha > 1) {
-        alpha = 1;
-    }
+    // if (alpha < 0) {
+    //     alpha = 0;
+    // } else if (alpha > 1) {
+    //     alpha = 1;
+    // }
     return `rgba(${unity()}, ${unity()}, ${unity()}, ${alpha})`;
 }
 
@@ -82,64 +87,131 @@ function collectExistsProperties(category: string, stats: TEVECharacterYearlySta
     }
     return propertyNames;
 }
+
+// ...
+// const MemorizedLine = React.memo((props: LineProps) => {
+//     DEBUG && console.log("MemorizedLine:: enter");
+//     return <Line {...props}/>;
+// }, (pp, np) => pp.strokeOpacity === np.strokeOpacity);
+
+// const colors = new Array(100).fill("").map(() => randomCSSRgba(1));
+// const fillColors = new Array(100).fill("").map(() => randomCSSRgba(0.2));
+
 /**
  * collect data by category name from /characters/{character_id}/stats/
  *
- * @param category "character" | "combat" | "industry" | "inventory" | "isk" | "market" | "mining" | "module" | "pve" | "social" | "travel"
+ * @param category "character" | "combat" | "industry" | "inventory" | "isk" |
+ *      "market" | "mining" | "module" | "orbital" (PvP) | "pve" | "social" | "travel"
  */
 function createChartComponentsBy(
-    category: string,
     stats: TEVECharacterYearlyStats,
-    type: TChartComponentType = "line"
+    category: string,
+    type: TChartComponentType,
+    opacitizeKey: string = ""
 ) {
-    const components: React.ReactNode[] = [];
-    const propertyNames = collectExistsProperties(category, stats);
-    for (const property of propertyNames) {
-        const keyPath = `${category}.${property}`;
-        const color = randomCSSRgba(0.78);
-        let component: React.ReactNode;
-        switch (type) {
-            case "line":
-                // type props:
-                // 'basis' | 'basisClosed' | 'basisOpen' | 'linear' | 'linearClosed' |
-                // 'natural' | 'monotoneX' | 'monotoneY' | 'monotone' |
-                // 'step' | 'stepBefore' | 'stepAfter' | Function
-                // useful: linear monotoneX monotoneY? monotone step
 
-                // legendType props:
-                // 'line' | 'square' | 'rect'| 'circle' | 'cross' |
-                // 'diamond' | 'square' | 'star' | 'triangle' | 'wye' | 'none'
-                // useful: line square rect ..., "none" is hide legendType
-                component = (
-                    <Line key={keyPath}
-                        type="monotone" legendType="line" dataKey={keyPath} stroke={color}
-                    />
-                );
-                break;
-            case "bar":
-                // DEVNOTE: Only the "isk" category seems to use negative value.
-                // btw, stackId value accept empty string.
-                const sid = category === "isk" ? void 0 : "dummy";
-                component = (
-                    <Bar key={keyPath}
-                        dataKey={keyPath} barSize={80} fill={color}
-                        stackId={sid}
-                        // legendType="square" // default: rect
-                    />
-                );
-                break;
-            default:
-                // area
-                component = (
-                    <Area key={keyPath}
-                        dot type="monotone" dataKey={keyPath} fill={color} stroke={color}
-                        stackId="bar0"
-                    />
-                );
-                break;
+    const propertyNames = React.useMemo(() => {
+        DEBUG && console.log("createChartComponentsBy.propertyNames in React.useMemo");
+        return collectExistsProperties(category, stats);
+    }, [category]);
+
+    const randomColors = React.useMemo(() => {
+        DEBUG && console.log("createChartComponentsBy.randomColors in React.useMemo");
+        return new Array(propertyNames.length).fill("").map(() => randomCSSRgba(1));
+    }, [category]);
+
+    const components: React.ReactNode[] = [];
+    // const components = React.useMemo(() => {
+    //     console.log("createChartComponentsBy.components in React.useMemo");
+    //     return [] as React.ReactNode[];
+    // }, [category, type]);
+
+    const DEFAULT_OPACITY = 0.4;
+
+    // if (components.length === 0) {
+
+        let colorIndex = 0;
+        for (const property of propertyNames) {
+
+            const keyPath = `${category}.${property}`;
+            const color = randomColors[colorIndex++];
+            // const color = randomCSSRgba(0.78);
+            const opacity = opacitizeKey === keyPath ? 1 : DEFAULT_OPACITY;
+
+            // DEVNOTE: Only the "isk" category seems to use negative value.
+            // btw, stackId value accept empty string.
+            const sid = category === "isk" ? void 0 : "dummy";
+            let component: React.ReactNode;
+
+            switch (type) {
+                case "line":
+                    // type props:
+                    // 'basis' | 'basisClosed' | 'basisOpen' | 'linear' | 'linearClosed' |
+                    // 'natural' | 'monotoneX' | 'monotoneY' | 'monotone' |
+                    // 'step' | 'stepBefore' | 'stepAfter' | Function
+                    // useful: linear monotoneX monotoneY? monotone step
+
+                    // legendType props:
+                    // 'line' | 'square' | 'rect'| 'circle' | 'cross' |
+                    // 'diamond' | 'star' | 'triangle' | 'wye' | 'none'
+                    // useful: line square rect ..., "none" is hide legendType
+                    component = (
+                        <Line key={keyPath}
+                            strokeOpacity={opacity}
+                            type="monotone" legendType="line" dataKey={keyPath} stroke={color}
+                        />
+                    );
+                    break;
+                case "bar":
+                    component = (
+                        <Bar key={keyPath}
+                            fillOpacity={opacity}
+                            fill={color}
+                            // stroke={strokeColor} strokeWidth={2}
+                            dataKey={keyPath}
+                            barSize={40}
+                            background={{ fill: "rgba(210, 210, 210, 0.2)" }}
+                            // stackId={sid}
+                            // legendType="rect" // default: rect
+                        />
+                    );
+                    break;
+                default:
+                    // area
+                    component = (
+                        <Area key={keyPath} // dot
+                            fillOpacity={opacity}
+                            fill={color}
+                            stroke={color}
+                            type="monotone" dataKey={keyPath}
+                            stackId={sid}
+                        />
+                    );
+                    break;
+            }
+            components.push(component);
         }
-        components.push(component);
-    }
+    // } else {
+        // // DEVNOTE: bit heavy..., use with - const components = React.useMemo...
+        // type TempProps = {
+        //     dataKey: string;
+        //     strokeOpacity: number;
+        //     fillOpacity: number;
+        // };
+        // // console.log("components.findIndex");
+        // const revert = opacitizeKey[0] === "!";
+        // revert && (opacitizeKey = opacitizeKey.substr(1));
+        // const x = components.findIndex(node => {
+        //     return (node as React.ReactElement<TempProps>).props.dataKey === opacitizeKey;
+        // });
+        // if (x >= 0) {
+        //     const old = components[x] as React.ReactElement<TempProps>;
+        //     const opacity = revert ? DEFAULT_OPACITY: 1;
+        //     // console.log("element found, ", old);
+        //     components[x] = React.cloneElement(old, { strokeOpacity: opacity, fillOpacity: opacity });
+        // }
+    // }
+
     return components;
 }
 
@@ -147,37 +219,63 @@ function createChartComponentsBy(
 //                       class or namespace declare.
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 type CustomizedYAxisTickProps = CartesianAxisProps & { payload?: { value: number } };
+// /**
+//  *
+//  */
+// class CustomizedYAxisTick extends React.Component<CustomizedYAxisTickProps> {
+//     constructor(props: CustomizedYAxisTickProps) {
+//         super(props);
+//     }
+//     shouldComponentUpdate(np: CustomizedYAxisTickProps) {
+//         return this.props.payload!.value !== np.payload!.value || this.props.y !== np.y;
+//     }
+//     render() {
+//         const { x, y /* , stroke */, payload } = this.props;
+//         // console.log(this.props);
+//         const tick = payload!.value;
+//         const tickText = tick < 1e3 ? tick : (tick / 1e3).toLocaleString() + "k";
+//         return (
+//             <g transform={`translate(${x}, ${y})`}>
+//                 <text
+//                     x={0} y={0} dy={0}
+//                     fontSize={11} textAnchor="end" fill="#999"
+//                     transform="rotate(-35)"
+//                 >
+//                     {tickText}
+//                 </text>
+//             </g>
+//         );
+//     }
+// }
 /**
- *
+ * 
  */
-class CustomizedYAxisTick extends React.Component<CustomizedYAxisTickProps> {
-    constructor(props: CustomizedYAxisTickProps) {
-        super(props);
-    }
-    shouldComponentUpdate(np: CustomizedYAxisTickProps) {
-        return this.props.payload!.value !== np.payload!.value || this.props.y !== np.y;
-    }
-    render() {
-        const { x, y /* , stroke */, payload } = this.props;
-        // console.log(this.props);
-        const tick = payload!.value;
-        const tickText = tick < 1e3 ? tick : (tick / 1e3).toLocaleString() + "k";
-        return (
-            <g transform={`translate(${x}, ${y})`}>
-                <text
-                    x={0} y={0} dy={0}
-                    fontSize={11} textAnchor="end" fill="#999"
-                    transform="rotate(-35)"
-                >
-                    {tickText}
-                </text>
-            </g>
-        );
-    }
-}
+const CustomizedYAxisTick = React.memo((props: CustomizedYAxisTickProps) => {
+    const { x, y /* , stroke */, payload } = props;
+    // print CartesianAxisProps
+    // console.log(this.props);
+    DEBUG && console.log("CustomizedYAxisTick:: in React.memo");
+    const tick = payload!.value;
+    const tickText = tick < 1e3 ? tick : (tick / 1e3).toLocaleString() + "k";
+    return (
+        <g transform={`translate(${x}, ${y})`}>
+            <text
+                x={0} y={0} dy={0}
+                fontSize={11} textAnchor="end" fill="#999"
+                transform="rotate(-35)"
+            >
+                {tickText}
+            </text>
+        </g>
+    );
+}, (pp, np) => pp.payload!.value === np.payload!.value && pp.y === np.y);
 
 // DEVNOTE: scaleSqrt.exponent - default maybe 0.5
-const yScaler = scaleSqrt().exponent(0.34);
+const yScaler = scaleSqrt().exponent(0.3);
+
+const cutoff = (p: string) => {
+    return p.substr(p.indexOf(".") + 1);
+}
 
 /**
  *
@@ -190,11 +288,26 @@ const LineBarAreaComposedChart = (props: {
      */
     category?: string;
     /**
-     * default is "bar"
+     * default is "line"
      */
     type?: TChartComponentType;
 }) => {
-    const { stats, category = "travel", type = "bar" } = props;
+
+    const { stats, category = "travel", type = "line" } = props;
+
+    const [opacitizeKey, changeOpacitizeKey] = React.useState("");
+    const mouseEnterHandler = React.useCallback((context: { dataKey: string }) => {
+        // console.log("enter");
+        // console.log(
+        //     JSON.stringify(context, null, 2)
+        // );
+        changeOpacitizeKey(context.dataKey);
+    }, []);
+    const mouseLeaveHandler = React.useCallback((context: { dataKey: string }) => {
+        // console.log("leave");
+        changeOpacitizeKey("!" + context.dataKey);
+    }, []);
+
     return (
         <ResponsiveContainer>
             <ComposedChart
@@ -210,19 +323,27 @@ const LineBarAreaComposedChart = (props: {
                     'quantile' | 'quantize' | 'utc' | 'sequential' | 'threshold' | Function
                 */}
                 <YAxis scale={yScaler} tick={<CustomizedYAxisTick />} />
-                <Tooltip wrapperStyle={{ fontSize: 9 }} />
+                <Tooltip
+                    wrapperStyle={{ fontSize: 9 }}
+                    cursor={{ stroke: "red" }}
+                    formatter={(value, name/* , props */) => {
+                        // console.log(props);
+                        return [value.toLocaleString(), cutoff(name)];
+                    }}
+                />
                 {/* verticalAlign - DEFAULT: 'middle'? */}
                 <Legend
                     align="left"
                     verticalAlign="bottom"
                     wrapperStyle={{ fontSize: 10 }}
+                    formatter={(value: string, entry/* , index */) => {
+                        // console.log(entry);
+                        return <span style={{ color: entry!.color }}>{cutoff(value)}</span>;
+                    }}
+                    onMouseEnter={mouseEnterHandler}
+                    onMouseLeave={mouseLeaveHandler}
                 />
-                {/*
-                    "character" | "combat" | "industry" | "inventory" |
-                    "isk" | "market" | "mining" | "module" | "pve" | "social" | "travel"
-                */}
-                {createChartComponentsBy(category, stats, type)}
-                {/* {lookupBy("travel")} */}
+                {createChartComponentsBy(stats, category, type, opacitizeKey)}
             </ComposedChart>
         </ResponsiveContainer>
     );

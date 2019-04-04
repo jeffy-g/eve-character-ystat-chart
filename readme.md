@@ -1,4 +1,4 @@
-[![LICENSE](https://img.shields.io/badge/Lisence-AGPLv3-blue.svg)](http://www.gnu.org/licenses/agpl-3.0.en.html)
+[![LICENSE](https://img.shields.io/badge/Lisence-AGPLv3-blue.svg)](http://www.gnu.org/licenses/agpl-3.0.en.html) [![Netlify Status](https://api.netlify.com/api/v1/badges/61398beb-72ae-4004-9ebb-bf8e16f872c5/deploy-status)](https://app.netlify.com/sites/csb-qq46vy7vz9/deploys)
 
 # [EVE online] Character yearly stat chart
 

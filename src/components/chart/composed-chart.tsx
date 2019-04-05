@@ -45,7 +45,7 @@ import { scaleSqrt } from "d3-scale";
 //
 // - - - enable debug log? - - -
 //
-const DEBUG = 0;
+const DEBUG = 1;
 
 export type EVEYearlyStat = {
     [category: string]: StringMap<number> | number;
@@ -271,7 +271,7 @@ const CustomizedYAxisTick = React.memo((props: CustomizedYAxisTickProps) => {
 }, (pp, np) => pp.payload!.value === np.payload!.value && pp.y === np.y);
 
 // DEVNOTE: scaleSqrt.exponent - default maybe 0.5
-const yScaler = scaleSqrt().exponent(0.3);
+const yScaler = scaleSqrt().exponent(0.35);
 
 const cutoff = (p: string) => {
     return p.substr(p.indexOf(".") + 1);

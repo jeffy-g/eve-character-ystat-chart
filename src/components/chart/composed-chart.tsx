@@ -22,21 +22,50 @@
 //                                imports.
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 import * as React from "react";
+// import {
+//     ResponsiveContainer,
+//     ComposedChart,
+//     Line, //LineProps,
+//     Area,
+//     Bar,
+//     XAxis,
+//     YAxis,
+//     CartesianGrid,
+//     Tooltip,
+//     Legend,
+//     CartesianAxisProps
+//     // Label,
+// } from "recharts";
+
+// DEVNOTE: these import statement are best solution for bundler. however, cannot refer to type definition.
+// @ts-ignore
+import ResponsiveContainer from "recharts/lib/component/ResponsiveContainer";
+// @ts-ignore
+import ComposedChart from "recharts/lib/chart/ComposedChart";
+// @ts-ignore
+import Line from "recharts/lib/cartesian/Line";
+// @ts-ignore
+import Area from "recharts/lib/cartesian/Area";
+// @ts-ignore
+import Bar from "recharts/lib/cartesian/Bar";
+// @ts-ignore
+import XAxis from "recharts/lib/cartesian/XAxis";
+// @ts-ignore
+import YAxis from "recharts/lib/cartesian/YAxis";
+// @ts-ignore
+import CartesianGrid from "recharts/lib/cartesian/CartesianGrid";
+// @ts-ignore
+import Tooltip from "recharts/lib/component/Tooltip";
+// @ts-ignore
+import Legend from "recharts/lib/component/Legend";
+
 import {
-    ResponsiveContainer,
-    ComposedChart,
-    Line, //LineProps,
-    Area,
-    Bar,
-    XAxis,
-    YAxis,
-    CartesianGrid,
-    Tooltip,
-    Legend,
-    CartesianAxisProps
-    // Label,
+    CartesianAxisProps,
+    LegendPayload,
+    // TooltipFormatter
 } from "recharts";
 
+// @ts -ignore 
 import { scaleSqrt } from "d3-scale";
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -45,10 +74,11 @@ import { scaleSqrt } from "d3-scale";
 //
 // - - - enable debug log? - - -
 //
-const DEBUG = 1;
+const DEBUG = 0;
 
+export type TYearlyStatProperties = "character" | "combat" | "industry" | "inventory" | "isk" | "market" | "mining" | "module" | "orbital" | "pve" | "social" | "travel";
 export type EVEYearlyStat = {
-    [category: string]: StringMap<number> | number;
+    [category in TYearlyStatProperties]: StringMap<number> | number;
 };
 // type Partial<T> = { [P in keyof T]+?: T[P] };
 export type TEVECharacterYearlyStat = Partial<EVEYearlyStat> & { year: number };
@@ -73,9 +103,9 @@ function randomCSSRgba(alpha: number): string {
 
 /**
  *
- * @param category name in `KEVEYearStat`
+ * @param category name in `TYearlyStatProperties`
  */
-function collectExistsProperties(category: string, stats: TEVECharacterYearlyStats) {
+function collectExistsProperties(category: TYearlyStatProperties, stats: TEVECharacterYearlyStats) {
     const propertyNames: string[] = [];
     for (const yearStat of stats) {
         const categoryObject = yearStat[category];
@@ -105,7 +135,7 @@ function collectExistsProperties(category: string, stats: TEVECharacterYearlySta
  */
 function createChartComponentsBy(
     stats: TEVECharacterYearlyStats,
-    category: string,
+    category: TYearlyStatProperties,
     type: TChartComponentType,
     opacitizeKey: string = ""
 ) {
@@ -130,86 +160,86 @@ function createChartComponentsBy(
 
     // if (components.length === 0) {
 
-        let colorIndex = 0;
-        for (const property of propertyNames) {
+    let colorIndex = 0;
+    for (const property of propertyNames) {
 
-            const keyPath = `${category}.${property}`;
-            const color = randomColors[colorIndex++];
-            // const color = randomCSSRgba(0.78);
-            const opacity = opacitizeKey === keyPath ? 1 : DEFAULT_OPACITY;
+        const keyPath = `${category}.${property}`;
+        const color = randomColors[colorIndex++];
+        // const color = randomCSSRgba(0.78);
+        const opacity = opacitizeKey === keyPath ? 1 : DEFAULT_OPACITY;
 
-            // DEVNOTE: Only the "isk" category seems to use negative value.
-            // btw, stackId value accept empty string.
-            const sid = category === "isk" ? void 0 : "dummy";
-            let component: React.ReactNode;
+        // DEVNOTE: Only the "isk" category seems to use negative value.
+        // btw, stackId value accept empty string.
+        const sid = category === "isk" ? void 0 : "dummy";
+        let component: React.ReactNode;
 
-            switch (type) {
-                case "line":
-                    // type props:
-                    // 'basis' | 'basisClosed' | 'basisOpen' | 'linear' | 'linearClosed' |
-                    // 'natural' | 'monotoneX' | 'monotoneY' | 'monotone' |
-                    // 'step' | 'stepBefore' | 'stepAfter' | Function
-                    // useful: linear monotoneX monotoneY? monotone step
+        switch (type) {
+            case "line":
+                // type props:
+                // 'basis' | 'basisClosed' | 'basisOpen' | 'linear' | 'linearClosed' |
+                // 'natural' | 'monotoneX' | 'monotoneY' | 'monotone' |
+                // 'step' | 'stepBefore' | 'stepAfter' | Function
+                // useful: linear monotoneX monotoneY? monotone step
 
-                    // legendType props:
-                    // 'line' | 'square' | 'rect'| 'circle' | 'cross' |
-                    // 'diamond' | 'star' | 'triangle' | 'wye' | 'none'
-                    // useful: line square rect ..., "none" is hide legendType
-                    component = (
-                        <Line key={keyPath}
-                            strokeOpacity={opacity}
-                            type="monotone" legendType="line" dataKey={keyPath} stroke={color}
-                        />
-                    );
-                    break;
-                case "bar":
-                    component = (
-                        <Bar key={keyPath}
-                            fillOpacity={opacity}
-                            fill={color}
-                            // stroke={strokeColor} strokeWidth={2}
-                            dataKey={keyPath}
-                            barSize={40}
-                            background={{ fill: "rgba(210, 210, 210, 0.2)" }}
-                            // stackId={sid}
-                            // legendType="rect" // default: rect
-                        />
-                    );
-                    break;
-                default:
-                    // area
-                    component = (
-                        <Area key={keyPath} // dot
-                            fillOpacity={opacity}
-                            fill={color}
-                            stroke={color}
-                            type="monotone" dataKey={keyPath}
-                            stackId={sid}
-                        />
-                    );
-                    break;
-            }
-            components.push(component);
+                // legendType props:
+                // 'line' | 'square' | 'rect'| 'circle' | 'cross' |
+                // 'diamond' | 'star' | 'triangle' | 'wye' | 'none'
+                // useful: line square rect ..., "none" is hide legendType
+                component = (
+                    <Line key={keyPath}
+                        strokeOpacity={opacity}
+                        type="monotone" legendType="line" dataKey={keyPath} stroke={color}
+                    />
+                );
+                break;
+            case "bar":
+                component = (
+                    <Bar key={keyPath}
+                        fillOpacity={opacity}
+                        fill={color}
+                        // stroke={strokeColor} strokeWidth={2}
+                        dataKey={keyPath}
+                        barSize={40}
+                        background={{ fill: "rgba(210, 210, 210, 0.2)" }}
+                    // stackId={sid}
+                    // legendType="rect" // default: rect
+                    />
+                );
+                break;
+            default:
+                // area
+                component = (
+                    <Area key={keyPath} // dot
+                        fillOpacity={opacity}
+                        fill={color}
+                        stroke={color}
+                        type="monotone" dataKey={keyPath}
+                        stackId={sid}
+                    />
+                );
+                break;
         }
+        components.push(component);
+    }
     // } else {
-        // // DEVNOTE: bit heavy..., use with - const components = React.useMemo...
-        // type TempProps = {
-        //     dataKey: string;
-        //     strokeOpacity: number;
-        //     fillOpacity: number;
-        // };
-        // // console.log("components.findIndex");
-        // const revert = opacitizeKey[0] === "!";
-        // revert && (opacitizeKey = opacitizeKey.substr(1));
-        // const x = components.findIndex(node => {
-        //     return (node as React.ReactElement<TempProps>).props.dataKey === opacitizeKey;
-        // });
-        // if (x >= 0) {
-        //     const old = components[x] as React.ReactElement<TempProps>;
-        //     const opacity = revert ? DEFAULT_OPACITY: 1;
-        //     // console.log("element found, ", old);
-        //     components[x] = React.cloneElement(old, { strokeOpacity: opacity, fillOpacity: opacity });
-        // }
+    // // DEVNOTE: bit heavy..., use with - const components = React.useMemo...
+    // type TempProps = {
+    //     dataKey: string;
+    //     strokeOpacity: number;
+    //     fillOpacity: number;
+    // };
+    // // console.log("components.findIndex");
+    // const revert = opacitizeKey[0] === "!";
+    // revert && (opacitizeKey = opacitizeKey.substr(1));
+    // const x = components.findIndex(node => {
+    //     return (node as React.ReactElement<TempProps>).props.dataKey === opacitizeKey;
+    // });
+    // if (x >= 0) {
+    //     const old = components[x] as React.ReactElement<TempProps>;
+    //     const opacity = revert ? DEFAULT_OPACITY: 1;
+    //     // console.log("element found, ", old);
+    //     components[x] = React.cloneElement(old, { strokeOpacity: opacity, fillOpacity: opacity });
+    // }
     // }
 
     return components;
@@ -271,7 +301,7 @@ const CustomizedYAxisTick = React.memo((props: CustomizedYAxisTickProps) => {
 }, (pp, np) => pp.payload!.value === np.payload!.value && pp.y === np.y);
 
 // DEVNOTE: scaleSqrt.exponent - default maybe 0.5
-const yScaler = scaleSqrt().exponent(0.35);
+const yScaler = scaleSqrt().exponent(0.3);
 
 const cutoff = (p: string) => {
     return p.substr(p.indexOf(".") + 1);
@@ -286,7 +316,7 @@ const LineBarAreaComposedChart = (props: {
     /**
      * default is "travel"
      */
-    category?: string;
+    category?: TYearlyStatProperties;
     /**
      * default is "line"
      */
@@ -326,7 +356,7 @@ const LineBarAreaComposedChart = (props: {
                 <Tooltip
                     wrapperStyle={{ fontSize: 9 }}
                     cursor={{ stroke: "red" }}
-                    formatter={(value, name/* , props */) => {
+                    formatter={(value: string, name: string/* , props */) => {
                         // console.log(props);
                         return [value.toLocaleString(), cutoff(name)];
                     }}
@@ -336,7 +366,7 @@ const LineBarAreaComposedChart = (props: {
                     align="left"
                     verticalAlign="bottom"
                     wrapperStyle={{ fontSize: 10 }}
-                    formatter={(value: string, entry/* , index */) => {
+                    formatter={(value: string, entry: LegendPayload/* , index */) => {
                         // console.log(entry);
                         return <span style={{ color: entry!.color }}>{cutoff(value)}</span>;
                     }}

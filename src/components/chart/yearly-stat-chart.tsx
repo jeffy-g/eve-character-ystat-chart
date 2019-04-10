@@ -29,6 +29,7 @@ import {
     EVEYearlyStat,
     TEVECharacterYearlyStat,
     TEVECharacterYearlyStats,
+    TYearlyStatProperties,
     TChartComponentType
 } from "./composed-chart";
 
@@ -41,9 +42,9 @@ export type TEVECharacterYearlyStats = TEVECharacterYearlyStats;
 // - - - this module types
 export type EVECharacterData = {
     /** EVE character ID. */
-    characterId: EVEId;
+    character_id: EVEId;
     /** EVE character name. */
-    characterName: string;
+    name: string;
 };
 export type EVECharacterYearlyStatChartProps = {
     stats: TEVECharacterYearlyStat[];
@@ -117,21 +118,21 @@ const collectActualCategories = (stats: TEVECharacterYearlyStat[]) => {
 const EVECharacterImage = React.memo(
     (props: EVECharacterData = {} as EVECharacterData) => {
         const {
-            characterId = "0",
-            characterName = "anonymouse"
+            character_id = "0",
+            name = "anonymouse"
         } = props;
-        DEBUG && console.log("EVECharacterImage:: enter, characterId:", characterId);
+        DEBUG && console.log("EVECharacterImage:: enter, characterId:", character_id);
         return (
             <img
                 alt=""
-                title={characterName}
+                title={name}
                 width="24"
                 style={{ verticalAlign: "middle" }}
-                src={`${EVE_IMAGE_SERVER_URL}/character/${characterId}_32.jpg`}
+                src={`${EVE_IMAGE_SERVER_URL}/character/${character_id}_32.jpg`}
             />
         );
     },
-    (pp, np) => pp!.characterId === np!.characterId
+    (pp, np) => pp!.character_id === np!.character_id
 );
 
 
@@ -174,7 +175,7 @@ export default function EVECharacterYearlyStatChart({
         [stats]
     );
 
-    const [category, updateCategory] = React.useState("character");
+    const [category, updateCategory] = React.useState<TYearlyStatProperties>("character");
     const [ctype, updateType] = React.useState("bar" as TChartComponentType);
 
     const categoryRef = React.useRef<HTMLSelectElement | null>(null);
@@ -196,7 +197,7 @@ export default function EVECharacterYearlyStatChart({
                 style={selectStyle}
                 defaultValue={category}
                 onChange={e => {
-                    updateCategory(e.currentTarget.value);
+                    updateCategory(e.currentTarget.value as TYearlyStatProperties);
                 }}
             >
                 {categories.map(category => (
@@ -227,7 +228,7 @@ export default function EVECharacterYearlyStatChart({
         );
     }, []);
 
-    const character_id = !characterData ? "sample" : characterData.characterId;
+    const character_id = !characterData ? "sample" : characterData.character_id;
     !characterData && (characterData = {} as EVECharacterData);
 
     return (
@@ -237,7 +238,7 @@ export default function EVECharacterYearlyStatChart({
                 {categorySelect}
                 <span>{", chart type:"}</span>
                 {typeSelect}
-                <EVECharacterImage {...characterData} />
+                <EVECharacterImage character_id={character_id} name={characterData.name} />
             </div>
             <LineBarAreaComposedChart
                 stats={cacheStats} category={category} type={ctype}

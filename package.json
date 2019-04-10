@@ -1,14 +1,8 @@
 {
-  "name": "eve-character-ystat-chart",
+  "name": "dev-eve-character-ystat-chart",
   "version": "1.0.0",
   "description": "Displays data obtained from ESI endpoint /characters/{character_id}/stats/ as a chart",
-  "keywords": [
-    "eve online",
-    "sso",
-    "react",
-    "recharts",
-    "typescript"
-  ],
+  "keywords": [],
   "main": "src/index.tsx",
   "license": "AGPL-3.0-only",
   "author": {

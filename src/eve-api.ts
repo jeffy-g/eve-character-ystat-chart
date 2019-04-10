@@ -37,7 +37,7 @@ export type SSOVerifyResult = {
     /** EVE character ID. */
     characterId: number;
     /** EVE character name. */
-    characterName: string;
+    name: string;
     /** ESI scopes. */
     scopes: string[];
     /** unused. (Especially not necessary data */
@@ -45,7 +45,7 @@ export type SSOVerifyResult = {
     /** unused. (Especially not necessary data */
     characterOwnerHash: string;
 };
-export type EVECharacterData = Pick<SSOVerifyResult, "characterId" | "characterName">;
+export type EVECharacterData = Pick<SSOVerifyResult, "characterId" | "name">;
 /*
 {
   "scp": [
@@ -200,7 +200,7 @@ function verify(accessToken: string): SSOVerifyResult {
     const jwt: EVEJWTData = JSON.parse(data);
     return {
         characterId: parseInt(jwt.sub.split(":")[2]),
-        characterName: jwt.name,
+        name: jwt.name,
         scopes: jwt.scp,
         type: jwt.kid,
         characterOwnerHash: jwt.owner

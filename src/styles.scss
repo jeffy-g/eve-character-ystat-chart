@@ -22,6 +22,7 @@ $DURATOIN: 800ms;
 body {
     margin: 0;
     font-family: consolas;
+    font-size: 13px;
     transition: background-color #{$DURATOIN} ease, color #{$DURATOIN} ease;
     user-select: none;
     &.dark {
@@ -44,25 +45,69 @@ body {
     text-align: center;
     z-index: 500;
 }
-    // DEVNOTE: title margin
-.recharts-container {
-    // background-color: #fff;
 
-    margin: 44px 18px 20px;
-    // margin-top: 54px;
-    // width: 95vw;
-    // height: calc(96vh - 54px);
-    position: fixed;
-    top: 0;
-    bottom: 0;
-    left: 0;
-    right: 0;
+$PAGEs-MARGIN: 10px;
+//
+// for src/components/views/character/yealy-stats.tsx
+//
+.recharts-ystats-container {
+    --x-margin: #{$PAGEs-MARGIN};
+    --x-margin-x2: var(--x-margin) + var(--x-margin);
+    // --ys-width: calc(100vw - var(--x-margin-x2));
+
+    // margin: 44px var(--x-margin) 20px;
+    // position: absolute;
+    // top: 8px;
+    // left: 0px;
+    margin: var(--x-margin) var(--x-margin) 20px;
+    position: relative;
+    // width: var(--ys-width);
+    width: calc(100vw - var(--x-margin-x2));
+    // DEVNOTE: substruct(margin-top + margin-bottom + top);
+    height: calc(100vh - 44px - 28px);
+    // bottom: 0px;
+    // right: 0px;
     box-sizing: border-box;
-    padding: 14px;
-
+    padding: 9px;
+    padding-bottom: 18px;
     border-radius: 4px;
-    box-shadow: 1px 2px 4px 1px silver, 2px 4px 10px 2px hsla(0,0%,80.8%,.55);
+    // DEVNOTE: useing mui Card elevation style
+    // box-shadow: rgba(192, 192, 192, 0.36) 1px 2px 4px 1px, rgba(206, 206, 206, 0.15) 2px 4px 10px 2px;
+    .recharts-tooltip-label {
+        // because, inject style "margin: 0" to recharts-tooltip-label element by API
+        margin: 0 0 4px !important;
+        font-size: 11px;
+        // text-decoration: underline;
+        &::after {
+            content: ":";
+        }
+    }
 }
+
+/* NOTE: with the recharts API, The class name "recharts-wrapper" will be granted. */
+.recharts-wrapper {
+    // position: absolute!important;
+    // top: 50px;
+    // left: 200px;
+
+    // border: solid 1px silver;
+    // border-radius: 4px;
+    // padding: 10px 20px 10px 10px;
+    padding: 5px 10px 5px 5px;
+    user-select: none;
+}
+//
+/* NOTE: with the recharts API, The class name "recharts-tooltip-wrapper" will be granted. */
+.recharts-tooltip-wrapper {
+    color: rgb(101, 101, 101);
+    // background: rgba(255, 255, 255, 0.83);
+}
+/* NOTE: with the recharts API, The class name "recharts-default-tooltip" will be granted. */
+.recharts-default-tooltip {
+    background: transparent;
+    border-radius: 4px;
+}
+
 
 // .native-select {
 //   margin: 2px 4px 8px 0;

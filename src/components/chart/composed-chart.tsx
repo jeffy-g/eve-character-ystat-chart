@@ -37,7 +37,7 @@ import * as React from "react";
 //     // Label,
 // } from "recharts";
 
-// DEVNOTE: these import statement are best solution for bundler. however, cannot refer to type definition.
+// DEVNOTE: 12/9/2018, 2:42:01 AM - these import statement are best solution for bundler. however, cannot refer to type definition.
 // @ts-ignore
 import ResponsiveContainer from "recharts/lib/component/ResponsiveContainer";
 // @ts-ignore
@@ -65,7 +65,7 @@ import {
     // TooltipFormatter
 } from "recharts";
 
-// @ts -ignore 
+// @ts-ignore 
 import { scaleSqrt } from "d3-scale";
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -93,13 +93,68 @@ const unity = (): number => {
     return ~~(Math.random() * 255);
 };
 function randomCSSRgba(alpha: number): string {
-    // if (alpha < 0) {
-    //     alpha = 0;
-    // } else if (alpha > 1) {
-    //     alpha = 1;
-    // }
     return `rgba(${unity()}, ${unity()}, ${unity()}, ${alpha})`;
 }
+
+// type XAnimate = <
+//     SType,
+//     T extends boolean,
+//     R extends (T extends true? SType: [SType, React.Dispatch<React.SetStateAction<boolean>>])
+// >(value: SType, onlyValue?: T) => R;
+/**
+ * **use lazy export with React hooks**
+ * 
+ * [must use in `Function component`.](#)
+ * 
+ * see: export let `setAnimationEnable`
+ * 
+ * NOTE: feel insecure, but this is also one solution
+    T// = (boolean | undefined)
+    // R extends (T extends undefined? [boolean, React.Dispatch<React.SetStateAction<boolean>>]: boolean)
+ */
+const useAnimation = <
+    T extends boolean,
+    R extends (T extends true ? boolean : [boolean, React.Dispatch<React.SetStateAction<boolean>>])
+>(value: boolean, onlyValue?: T): R => {
+    // typeof onlyValue === "undefined" && (onlyValue = false as T);
+    const [enable, setEnable] = React.useState(value);
+    if (setAnimationEnable === void 0 || setAnimationEnable !== setEnable) {
+        // DEVNOTE: lazy assign!
+        setAnimationEnable = setEnable;
+    }
+    return (onlyValue === true ? enable : [enable, setEnable]) as R;
+}
+
+// CAUTION: 2019-4-19 - this implementation share "setAnimationsEnabled" dispatch function at module top level scope
+// type TUseAnimation = typeof useAnimation;
+// DEVNOTE: lazy assign at useAnimation
+/**
+ * CAUTION: **DO NOT USE** before initialze of LineBarAreaComposedChart component !
+ */
+export let setAnimationEnable: Exclude<ReturnType<typeof useAnimation>, boolean>[1];
+
+
+/* results
+eve-ystat-experiment.js:1852 [logger] ::character , size=3
+::combat    , size=94
+::industry  , size=36
+::inventory , size=2
+::isk       , size=2
+::market    , size=13
+::mining    , size=19
+::module    , size=69
+::orbital   , size=3
+::pve       , size=4
+::social    , size=25
+::travel    , size=21
+*/
+let randomColors: string[] = [];
+export const generateColors = () => {
+    randomColors = new Array(94).fill("").map(() => randomCSSRgba(1));
+}
+generateColors();
+// window.setTimeout(generateColors, 12);
+
 
 /**
  *
@@ -137,18 +192,20 @@ function createChartComponentsBy(
     stats: TEVECharacterYearlyStats,
     category: TYearlyStatProperties,
     type: TChartComponentType,
+    enableAnimate: boolean,
     opacitizeKey: string = ""
 ) {
 
-    const propertyNames = React.useMemo(() => {
-        DEBUG && console.log("createChartComponentsBy.propertyNames in React.useMemo");
-        return collectExistsProperties(category, stats);
-    }, [category]);
+    // const propertyNames = React.useMemo(() => {
+    //     DEBUG && console.log("createChartComponentsBy.propertyNames in React.useMemo");
+    //     return collectExistsProperties(category, stats);
+    // }, [category]);
+    const propertyNames = collectExistsProperties(category, stats);
 
-    const randomColors = React.useMemo(() => {
-        DEBUG && console.log("createChartComponentsBy.randomColors in React.useMemo");
-        return new Array(propertyNames.length).fill("").map(() => randomCSSRgba(1));
-    }, [category]);
+    // const randomColors = React.useMemo(() => {
+    //     DEBUG && console.log("createChartComponentsBy.randomColors in React.useMemo");
+    //     return new Array(propertyNames.length).fill("").map(() => randomCSSRgba(1));
+    // }, [category, propertyNames.length === 0]);
 
     const components: React.ReactNode[] = [];
     // const components = React.useMemo(() => {
@@ -189,6 +246,8 @@ function createChartComponentsBy(
                     <Line key={keyPath}
                         strokeOpacity={opacity}
                         type="monotone" legendType="line" dataKey={keyPath} stroke={color}
+                        // 2019-4-19
+                        isAnimationActive={enableAnimate}
                     />
                 );
                 break;
@@ -201,6 +260,8 @@ function createChartComponentsBy(
                         dataKey={keyPath}
                         barSize={40}
                         background={{ fill: "rgba(210, 210, 210, 0.2)" }}
+                        // 2019-4-19
+                        isAnimationActive={enableAnimate}
                     // stackId={sid}
                     // legendType="rect" // default: rect
                     />
@@ -215,6 +276,8 @@ function createChartComponentsBy(
                         stroke={color}
                         type="monotone" dataKey={keyPath}
                         stackId={sid}
+                        // 2019-4-19
+                        isAnimationActive={enableAnimate}
                     />
                 );
                 break;
@@ -321,11 +384,19 @@ const LineBarAreaComposedChart = (props: {
      * default is "line"
      */
     type?: TChartComponentType;
+    // /**
+    //  * default `false`
+    //  */
+    // isAnimationActive?: boolean
 }) => {
 
-    const { stats, category = "travel", type = "line" } = props;
+    const { stats, category = "travel", type = "line"/* , isAnimationActive = false */ } = props;
 
     const [opacitizeKey, changeOpacitizeKey] = React.useState("");
+
+    // DEVNOTE: use lazy export with React hooks
+    const enableAnimate = useAnimation(false, true);
+
     const mouseEnterHandler = React.useCallback((context: { dataKey: string }) => {
         // console.log("enter");
         // console.log(
@@ -354,7 +425,10 @@ const LineBarAreaComposedChart = (props: {
                 */}
                 <YAxis scale={yScaler} tick={<CustomizedYAxisTick />} />
                 <Tooltip
-                    wrapperStyle={{ fontSize: 9 }}
+                    // 2019-4-19
+                    isAnimationActive={enableAnimate}
+                    // DEVNOTE: "combat" category has 94 properties! (max
+                    wrapperStyle={{ fontSize: 9, lineHeight: 0.75 }}
                     cursor={{ stroke: "red" }}
                     formatter={(value: string, name: string/* , props */) => {
                         // console.log(props);
@@ -373,7 +447,7 @@ const LineBarAreaComposedChart = (props: {
                     onMouseEnter={mouseEnterHandler}
                     onMouseLeave={mouseLeaveHandler}
                 />
-                {createChartComponentsBy(stats, category, type, opacitizeKey)}
+                {createChartComponentsBy(stats, category, type, enableAnimate, opacitizeKey)}
             </ComposedChart>
         </ResponsiveContainer>
     );

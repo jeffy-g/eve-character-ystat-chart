@@ -24,7 +24,7 @@
 // - - - - useImplicitAuth - - - -
 // https://login.eveonline.com/v2/oauth/authorize/?response_type=token&redirect_uri=<redirect_uri>&client_id=<client_id>&scope=esi-characterstats.read.v1&state=login
 import * as util from "./util";
-import { TEVECharacterYearlyStat } from "./components/chart/yearly-stat-chart";
+import { TEVECharacterYearlyStat, EVECharacterData } from "./components/chart/yearly-stat-chart";
 
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -35,7 +35,7 @@ import { TEVECharacterYearlyStat } from "./components/chart/yearly-stat-chart";
  */
 export type SSOVerifyResult = {
     /** EVE character ID. */
-    characterId: number;
+    character_id: number;
     /** EVE character name. */
     name: string;
     /** ESI scopes. */
@@ -45,7 +45,6 @@ export type SSOVerifyResult = {
     /** unused. (Especially not necessary data */
     characterOwnerHash: string;
 };
-export type EVECharacterData = Pick<SSOVerifyResult, "characterId" | "name">;
 /*
 {
   "scp": [
@@ -166,7 +165,7 @@ function handleCallbackResponse(url: string): boolean {
         const esi_base = "https://esi.evetech.net/latest/";
         // https://esi.evetech.net/latest/characters/<character_id>/stats/?datasource=tranquility&token=<access_token>
         const esi_url = `${esi_base}characters/${
-            verifyData.characterId
+            verifyData.character_id
         }/stats/?datasource=tranquility&token=${access_token}`;
 
         // DEVNOTE: async process
@@ -199,7 +198,7 @@ function verify(accessToken: string): SSOVerifyResult {
     const data = atob(accessToken.split(".")[1]);
     const jwt: EVEJWTData = JSON.parse(data);
     return {
-        characterId: parseInt(jwt.sub.split(":")[2]),
+        character_id: parseInt(jwt.sub.split(":")[2]),
         name: jwt.name,
         scopes: jwt.scp,
         type: jwt.kid,

@@ -30,7 +30,9 @@ import {
     TEVECharacterYearlyStat,
     TEVECharacterYearlyStats,
     TYearlyStatProperties,
-    TChartComponentType
+    TChartComponentType,
+    generateColors,
+    setAnimationEnable
 } from "./composed-chart";
 
 // - - - re exports
@@ -58,7 +60,7 @@ export type EVECharacterYearlyStatChartProps = {
 //
 // - - - enable debug log? - - -
 //
-const DEBUG = 0;
+const DEBUG = !0;
 /**
  * NOTE:
  * ```
@@ -81,54 +83,56 @@ const EVE_IMAGE_SERVER_URL = "https://image.eveonline.com";
  *
  * @param stats
  */
-const collectActualCategories = (stats: TEVECharacterYearlyStat[]) => {
-    const propertyNames: string[] = [];
-    for (const yearStat of stats) {
-        const categories = Object.keys(yearStat);
-        // DEVNOTE: tried sort by value but nothing effect
-        // {
-        //     for (let index = 0; index < categories.length; index++) {
-        //         const category = categories[index];
-        //         if (category === "year" || category === "isk") {
-        //             continue;
-        //         }
-        //         const categoryObject = yearStat[category] as StringMap<number>;
-        //         const keysInCatetory = Object.keys(categoryObject);
-        //         const newcategoryObject: StringMap<number> = {};
-        //         let prefix = 1; // 効果なし
-        //         keysInCatetory
-        //             .sort((a, b) => {
-        //                 return categoryObject[a]! - categoryObject[b]!;
-        //             })
-        //             .forEach(key => (newcategoryObject[key] = categoryObject[key]));
-        //         console.log(keysInCatetory);
-        //         console.log(newcategoryObject);
-        //         yearStat[category] = newcategoryObject;
-        //     }
-        // }
-        for (const category of categories) {
-            if (category !== "year") {
-                !propertyNames.includes(category) && propertyNames.push(category);
-            }
-        }
-    }
-    return propertyNames;
-};
+// const collectActualCategories = (stats: TEVECharacterYearlyStat[]) => {
+//     const propertyNames: string[] = [];
+//     for (const yearStat of stats) {
+//         const categories = Object.keys(yearStat);
+//         // DEVNOTE: tried sort by value but nothing effect
+//         // {
+//         //     for (let index = 0; index < categories.length; index++) {
+//         //         const category = categories[index];
+//         //         if (category === "year" || category === "isk") {
+//         //             continue;
+//         //         }
+//         //         const categoryObject = yearStat[category] as StringMap<number>;
+//         //         const keysInCatetory = Object.keys(categoryObject);
+//         //         const newcategoryObject: StringMap<number> = {};
+//         //         let prefix = 1; // 効果なし
+//         //         keysInCatetory
+//         //             .sort((a, b) => {
+//         //                 return categoryObject[a]! - categoryObject[b]!;
+//         //             })
+//         //             .forEach(key => (newcategoryObject[key] = categoryObject[key]));
+//         //         console.log(keysInCatetory);
+//         //         console.log(newcategoryObject);
+//         //         yearStat[category] = newcategoryObject;
+//         //     }
+//         // }
+//         for (const category of categories) {
+//             if (category !== "year") {
+//                 !propertyNames.includes(category) && propertyNames.push(category);
+//             }
+//         }
+//     }
+//     return propertyNames;
+// };
 
 const EVECharacterImage = React.memo(
     (props: EVECharacterData = {} as EVECharacterData) => {
         const {
-            character_id = "0",
+            character_id = "1",
             name = "anonymouse"
         } = props;
-        DEBUG && console.log("EVECharacterImage:: enter, characterId:", character_id);
+        DEBUG && console.log("EVECharacterImage:: enter, character_id:", character_id);
         return (
             <img
                 alt=""
-                title={name}
+                title={`${name}\ntip: click then re-generate colors`}
                 width="24"
-                style={{ verticalAlign: "middle" }}
+                style={{ verticalAlign: "middle", marginRight: 8 }}
+                // https://image.eveonline.com/character/1_32.jpg is dummy image
                 src={`${EVE_IMAGE_SERVER_URL}/character/${character_id}_32.jpg`}
+                onClick={generateColors}
             />
         );
     },
@@ -139,6 +143,21 @@ const EVECharacterImage = React.memo(
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 //                       class or namespace declare.
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+const YSTAT_CATEGORIES: TYearlyStatProperties[] = [
+    "character",
+    "combat",
+    "industry",
+    "inventory",
+    "isk",
+    "market",
+    "mining",
+    "module",
+    "orbital",
+    "pve",
+    "social",
+    "travel"
+];
+
 const selectStyle = {
     margin: "2px 4px 1px 4px",
     borderRadius: 3,
@@ -162,15 +181,14 @@ export default function EVECharacterYearlyStatChart({
 }: EVECharacterYearlyStatChartProps) {
     //
     DEBUG && console.log("EVECharacterYearlyStatChart:: enter");
-    const [cacheStats, categories] = React.useMemo<[TEVECharacterYearlyStat[], string[]]>(
+    const cacheStats = React.useMemo(
         () => {
             DEBUG && console.log("EVECharacterYearlyStatChart:: in React.useMemo");
             stats.sort((a, b) => {
                 return (a.year as number) - (b.year as number);
             });
             // use cache.
-            const categories = collectActualCategories(stats);
-            return [stats, categories];
+            return stats;
         },
         [stats]
     );
@@ -198,9 +216,15 @@ export default function EVECharacterYearlyStatChart({
                 defaultValue={category}
                 onChange={e => {
                     updateCategory(e.currentTarget.value as TYearlyStatProperties);
+                    // DEVNOTE: 2019-4-18 - problem: Added non-passive event listener to a scroll-blocking 'mousewheel' event.
+                    // https://stackoverflow.com/questions/51677627/reactjs-added-non-passive-event-listener-to-a-scroll-blocking-mousewheel-eve
+                    // Based on the above url, no effect.
+                    // Since a warning is logged at click event? When changing the selected item,
+                    // change event may not be relevant
+                    e.preventDefault();
                 }}
             >
-                {categories.map(category => (
+                {YSTAT_CATEGORIES.map(category => (
                     <option key={category} value={category}>
                         {category}
                     </option>
@@ -217,6 +241,7 @@ export default function EVECharacterYearlyStatChart({
                 defaultValue={ctype}
                 onChange={e => {
                     updateType(e.currentTarget.value as TChartComponentType);
+                    e.preventDefault();
                 }}
             >
                 {["line", "bar", "area"].map(type => (
@@ -228,17 +253,37 @@ export default function EVECharacterYearlyStatChart({
         );
     }, []);
 
-    const character_id = !characterData ? "sample" : characterData.character_id;
+    const animateCheckbox = React.useMemo(() => {
+        DEBUG && console.log("EVECharacterYearlyStatChart@animateCheckbox in React.useMemo");
+        return (
+            <input type="checkbox"
+                // DEVNOTE: in this case, should use uncontrolled state for "checked" property.
+                //  -> React.useMemo can returns same instance by these
+                // checked={false}
+                style={{ marginLeft: 8 }}
+                onChange={e => {
+                    setAnimationEnable(e.currentTarget.checked);
+                    // e.preventDefault();
+                }}
+            />
+        );
+    }, []);
+
+
+    // https://image.eveonline.com/character/1_32.jpg
+    const character_id = !characterData ? "1" : characterData.character_id;
     !characterData && (characterData = {} as EVECharacterData);
 
     return (
         <>
             <div style={headerStyle}>
-                <span>{`/characters/${character_id}/stats/:`}</span>
+                <EVECharacterImage character_id={character_id} name={characterData.name} />
+                <span>{` /characters/${character_id}/stats/, category:`}</span>
                 {categorySelect}
                 <span>{", chart type:"}</span>
                 {typeSelect}
-                <EVECharacterImage character_id={character_id} name={characterData.name} />
+                {animateCheckbox}
+                <span>{" animate"}</span>
             </div>
             <LineBarAreaComposedChart
                 stats={cacheStats} category={category} type={ctype}

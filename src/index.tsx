@@ -22,9 +22,10 @@ import * as ReactDOM from "react-dom";
 
 import sampleStats from "./sample-data";
 import EVECharacterYearlyStatChart, {
-    TEVECharacterYearlyStat
+    TEVECharacterYearlyStat,
+    EVECharacterData
 } from "./components/chart/yearly-stat-chart";
-import { launchAuthWindow, EVECharacterData } from "./eve-api";
+import { launchAuthWindow } from "./eve-api";
 
 import "./styles.scss";
 

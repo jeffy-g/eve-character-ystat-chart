@@ -170,7 +170,7 @@ function handleCallbackResponse(url: string): boolean {
 
         // DEVNOTE: async process
         fetch(esi_url).then(async response => {
-            const ys = <Parameters<TEVECharacterYearlyStatInitializer>[0]>await response.json();
+            const ys: Parameters<TEVECharacterYearlyStatInitializer>[0] = await response.json();
             DEBUG && console.log(ys);
             authCallback!(ys, verifyData);
             DEBUG && debugLog("fetch.then:: exit");

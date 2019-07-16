@@ -68,7 +68,9 @@ const renderComponent = (
         return 0!;
     }
     console.log(document.readyState);
-    document.readyState === "complete" && init() || window.addEventListener(
+    (
+        document.readyState === "complete" && init()
+    ) || window.addEventListener(
         "load", init, { once: true }
     );
 })();
